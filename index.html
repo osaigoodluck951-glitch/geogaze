@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Goggle Tracker - Map Location App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+        }
+
+        .map-container {
+            height: 100vh;
+            width: 100%;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            z-index: 1000;
+            max-width: 380px;
+            min-width: 320px;
+        }
+
+        .control-panel h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #0f172a;
+        }
+
+        .control-panel .subtitle {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #cbd5e1;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .goggle-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .goggle-item {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .goggle-item:hover {
+            background: #e2e8f0;
+            border-color: #3b82f6;
+        }
+
+        .goggle-item.active {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
+
+        .goggle-info h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .goggle-info p {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .goggle-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-small {
+            padding: 6px 10px;
+            font-size: 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .btn-remove {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .btn-remove:hover {
+            background: #fecaca;
+        }
+
+        .btn-focus {
+            background: #dbeafe;
+            color: #3b82f6;
+        }
+
+        .btn-focus:hover {
+            background: #bfdbfe;
+        }
+
+        .status-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-offline {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .stats {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .stat {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 16px;
+            z-index: 1000;
+            max-width: 300px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .info-panel h3 {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .marker-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .leaflet-popup-content {
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .popup-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+
+        .popup-detail {
+            color: #64748b;
+            font-size: 12px;
+            margin: 4px 0;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+
+        .active-marker {
+            animation: pulse 2s infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="map-container">
+        <div id="map"></div>
+
+        <div class="control-panel">
+            <h1>🥽 Goggle Tracker</h1>
+            <p class="subtitle">Track and manage goggle locations</p>
+
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="totalCount">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="activeCount">0</div>
+                    <div class="stat-label">Active</div>
+                </div>
+            </div>
+
+            <form id="addGoggleForm">
+                <div class="form-group">
+                    <label for="goggleName">Goggle Name</label>
+                    <input type="text" id="goggleName" placeholder="e.g., Ski Trip Set" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="goggleType">Type</label>
+                    <select id="goggleType" required>
+                        <option value="">Select type</option>
+                        <option value="skiing">Skiing</option>
+                        <option value="snowboarding">Snowboarding</option>
+                        <option value="motorcycle">Motorcycle</option>
+                        <option value="racing">Racing</option>
+                        <option value="sports">Sports</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="goggleLat">Latitude</label>
+                    <input type="number" id="goggleLat" placeholder="e.g., 40.7128" step="0.0001" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="goggleLng">Longitude</label>
+                    <input type="number" id="goggleLng" placeholder="e.g., -74.0060" step="0.0001" required>
+                </div>
+
+                <button type="submit" class="btn">+ Add Goggle</button>
+            </form>
+
+            <div class="goggle-list" id="goggleList"></div>
+        </div>
+
+        <div class="info-panel">
+            <h3>📍 Quick Start</h3>
+            <p>Click the map to see coordinates, or add goggles using the form on the left. Each goggle appears as a colored marker on the map.</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([40.7128, -74.0060], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19,
+        }).addTo(map);
+
+        // Data storage
+        let goggles = JSON.parse(localStorage.getItem('goggles')) || [];
+        let selectedGoggleId = null;
+
+        // Goggle type to emoji mapping
+        const typeEmojis = {
+            skiing: '⛷️',
+            snowboarding: '🏂',
+            motorcycle: '🏍️',
+            racing: '🏎️',
+            sports: '🥇',
+            other: '🎯'
+        };
+
+        // Goggle type to color mapping
+        const typeColors = {
+            skiing: '#3b82f6',
+            snowboarding: '#8b5cf6',
+            motorcycle: '#ef4444',
+            racing: '#f59e0b',
+            sports: '#10b981',
+            other: '#6b7280'
+        };
+
+        const markers = {};
+
+        // Add goggle function
+        function addGoggle(name, type, lat, lng) {
+            const id = Date.now().toString();
+            const goggle = {
+                id,
+                name,
+                type,
+                lat: parseFloat(lat),
+                lng: parseFloat(lng),
+                status: 'active',
+                addedAt: new Date().toLocaleString(),
+                lastUpdate: new Date().toLocaleString()
+            };
+
+            goggles.push(goggle);
+            localStorage.setItem('goggles', JSON.stringify(goggles));
+
+            addMarker(goggle);
+            renderGoggleList();
+            updateStats();
+
+            document.getElementById('addGoggleForm').reset();
+        }
+
+        // Add marker to map
+        function addMarker(goggle) {
+            const color = typeColors[goggle.type] || '#6b7280';
+            const emoji = typeEmojis[goggle.type] || '🎯';
+
+            const markerEl = document.createElement('div');
+            markerEl.className = 'marker-icon';
+            markerEl.style.backgroundColor = color;
+            markerEl.textContent = emoji;
+
+            const marker = L.marker([goggle.lat, goggle.lng], {
+                icon: L.divIcon({
+                    html: markerEl.outerHTML,
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16],
+                    popupAnchor: [0, -16]
+                })
+            }).addTo(map);
+
+            marker.bindPopup(`
+                <div class="popup-title">${emoji} ${goggle.name}</div>
+                <div class="popup-detail"><strong>Type:</strong> ${goggle.type}</div>
+                <div class="popup-detail"><strong>Location:</strong> ${goggle.lat.toFixed(4)}, ${goggle.lng.toFixed(4)}</div>
+                <div class="popup-detail"><strong>Added:</strong> ${goggle.addedAt}</div>
+            `);
+
+            marker.on('click', () => {
+                selectedGoggleId = goggle.id;
+                renderGoggleList();
+            });
+
+            markers[goggle.id] = marker;
+        }
+
+        // Remove goggle function
+        function removeGoggle(id) {
+            goggles = goggles.filter(g => g.id !== id);
+            localStorage.setItem('goggles', JSON.stringify(goggles));
+
+            if (markers[id]) {
+                map.removeLayer(markers[id]);
+                delete markers[id];
+            }
+
+            selectedGoggleId = null;
+            renderGoggleList();
+            updateStats();
+        }
+
+        // Focus on goggle
+        function focusGoggle(id) {
+            const goggle = goggles.find(g => g.id === id);
+            if (goggle) {
+                selectedGoggleId = id;
+                map.setView([goggle.lat, goggle.lng], 15);
+                markers[id].openPopup();
+                renderGoggleList();
+            }
+        }
+
+        // Render goggle list
+        function renderGoggleList() {
+            const listEl = document.getElementById('goggleList');
+            listEl.innerHTML = '';
+
+            if (goggles.length === 0) {
+                listEl.innerHTML = '<p style="text-align: center; color: #94a3b8; padding: 20px 0;">No goggles tracked yet</p>';
+                return;
+            }
+
+            goggles.forEach(goggle => {
+                const emoji = typeEmojis[goggle.type] || '🎯';
+                const color = typeColors[goggle.type] || '#6b7280';
+
+                const itemEl = document.createElement('div');
+                itemEl.className = `goggle-item ${selectedGoggleId === goggle.id ? 'active' : ''}`;
+
+                itemEl.innerHTML = `
+                    <div class="goggle-info" style="flex: 1;">
+                        <h3>${emoji} ${goggle.name}</h3>
+                        <p>${goggle.type.charAt(0).toUpperCase() + goggle.type.slice(1)} • ${goggle.lat.toFixed(4)}, ${goggle.lng.toFixed(4)}</p>
+                    </div>
+                    <div class="goggle-actions">
+                        <button class="btn-small btn-focus" onclick="focusGoggle('${goggle.id}')">View</button>
+                        <button class="btn-small btn-remove" onclick="removeGoggle('${goggle.id}')">Remove</button>
+                    </div>
+                `;
+
+                listEl.appendChild(itemEl);
+            });
+        }
+
+        // Update stats
+        function updateStats() {
+            document.getElementById('totalCount').textContent = goggles.length;
+            document.getElementById('activeCount').textContent = goggles.filter(g => g.status === 'active').length;
+        }
+
+        // Form submission
+        document.getElementById('addGoggleForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('goggleName').value;
+            const type = document.getElementById('goggleType').value;
+            const lat = document.getElementById('goggleLat').value;
+            const lng = document.getElementById('goggleLng').value;
+
+            addGoggle(name, type, lat, lng);
+        });
+
+        // Map click to show coordinates
+        map.on('click', (e) => {
+            const { lat, lng } = e.latlng;
+            document.getElementById('goggleLat').value = lat.toFixed(4);
+            document.getElementById('goggleLng').value = lng.toFixed(4);
+            document.getElementById('goggleName').focus();
+        });
+
+        // Initialize display
+        goggles.forEach(goggle => addMarker(goggle));
+        renderGoggleList();
+        updateStats();
+    </script>
+</body>
+</html>
